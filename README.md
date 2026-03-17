@@ -1,70 +1,35 @@
-# Growth Signal Monorepo
+# Growth Signal (Beta) — Phase 0 Foundation
 
-A modular TypeScript monorepo for Growth Signal.
+This repository starts with a **small, production-minded foundation** for Growth Signal.
 
-## Stack
-- pnpm workspaces + Turborepo
-- Next.js app router (`apps/web`)
-- Fastify API (`apps/api`)
-- BullMQ worker (`apps/worker`)
-- Prisma + PostgreSQL (`packages/db`)
-- Shared packages in `/packages`
+## What is included in this phase
+- Monorepo-style workspace structure (`apps/*`, `packages/*`)
+- A typed `@growth-signal/domain` package for core data contracts
+- A tiny, testable signal engine prototype that separates:
+  - observation
+  - diagnosis
+  - confidence
+  - recommendation
 
-## Project Structure
+## Why this phase exists
+Before building UI and connectors, we need clean contracts and a deterministic, testable analysis layer.
+This keeps LLM features and product presentation decoupled from source-of-truth business logic.
 
-- `apps/web`: Next.js frontend with landing/login/dashboard/onboarding/settings/reports/chat shells
-- `apps/api`: API service
-- `apps/worker`: Background job service
-- `packages/ui`: Shared UI components (shadcn-style primitives)
-- `packages/types`: Shared TypeScript types
-- `packages/db`: Prisma schema + DB client
-- `packages/auth`, `packages/connectors`, `packages/analytics`, `packages/prompts`, `packages/memory`: domain modules
+## Next suggested phase
+1. Add a minimal Next.js `apps/web` app with:
+   - auth stub
+   - onboarding shell
+   - daily signal summary view from mocked normalized data
+2. Add `packages/connectors` interfaces for read-only sync contracts.
 
-## Setup
-
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-2. Copy environment files:
-   ```bash
-   cp .env.example .env
-   cp apps/web/.env.example apps/web/.env.local
-   cp apps/api/.env.example apps/api/.env
-   cp apps/worker/.env.example apps/worker/.env
-   ```
-3. Generate Prisma client:
-   ```bash
-   pnpm --filter @growth-signal/db db:generate
-   ```
-
-## Run locally
-
-Run everything:
+## Run tests
 ```bash
-pnpm dev
+npm install
+npm test
 ```
 
-Or run each service:
-```bash
-pnpm --filter web dev
-pnpm --filter api dev
-pnpm --filter worker dev
-```
-
-Default ports:
-- Web: `http://localhost:3000`
-- API: `http://localhost:4000`
-
-## Useful scripts
-- `pnpm build`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm typecheck`
-
-## Database
-Prisma schema is at `packages/db/prisma/schema.prisma`.
-
-## Docker
-- `apps/api/Dockerfile`
-- `apps/worker/Dockerfile`
+## TODO (production-hard)
+- Define confidence calibration strategy across connectors
+- Add event-level lineage metadata for observability and support debugging
+- Add queue-oriented sync lifecycle contract (`queued`, `running`, `retrying`, `failed`, `succeeded`)
+- Add persisted memory contract for recommendations and user feedback loops
