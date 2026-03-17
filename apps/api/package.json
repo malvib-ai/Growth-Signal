@@ -1,0 +1,25 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "node -e \"console.log('api tests placeholder')\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@growth-signal/db": "workspace:*",
+    "@growth-signal/types": "workspace:*",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.6",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

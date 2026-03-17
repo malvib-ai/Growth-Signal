@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@growth-signal/types": ["packages/types/src"],
+      "@growth-signal/ui": ["packages/ui/src"],
+      "@growth-signal/db": ["packages/db/src"],
+      "@growth-signal/auth": ["packages/auth/src"],
+      "@growth-signal/connectors": ["packages/connectors/src"],
+      "@growth-signal/analytics": ["packages/analytics/src"],
+      "@growth-signal/prompts": ["packages/prompts/src"],
+      "@growth-signal/memory": ["packages/memory/src"]
+    }
+  }
+}

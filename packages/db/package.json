@@ -1,0 +1,22 @@
+{
+  "name": "@growth-signal/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "test": "node -e \"console.log('db tests placeholder')\"",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.21.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.21.1"
+  }
+}
