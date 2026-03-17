@@ -7,19 +7,490 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
 }
 
-model Signal {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
+enum ConnectorType {
+  SHOPIFY
+  META_ADS
+  GOOGLE_ADS
+  GA4
+}
+
+enum ConnectorStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  DISCONNECTED
+}
+
+enum SyncStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum Grain {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum InsightStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum RecommendationStatus {
+  DRAFT
+  ACTIVE
+  ACCEPTED
+  REJECTED
+  APPLIED
+}
+
+enum ReportType {
+  PERFORMANCE
+  ATTRIBUTION
+  FUNNEL
+  EXECUTIVE_SUMMARY
+}
+
+enum Channel {
+  PAID_SOCIAL
+  PAID_SEARCH
+  ECOMMERCE
+  ANALYTICS
+  OTHER
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  workspaceMembers WorkspaceMember[]
+  chatSessions     ChatSession[]
+  chatMessages     ChatMessage[]
+  authoredReports  Report[]
+}
+
+model Workspace {
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  timezone          String             @default("UTC")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  members           WorkspaceMember[]
+  connectors        Connector[]
+  connectorAccounts ConnectorAccount[]
+  syncRuns          SyncRun[]
+  dailyMetricFacts  DailyMetricFact[]
+  products          Product[]
+  landingPages      LandingPage[]
+  campaigns         Campaign[]
+  adGroupOrAdSets   AdGroupOrAdSet[]
+  ads               Ad[]
+  creatives         Creative[]
+  insights          Insight[]
+  recommendations   Recommendation[]
+  reports           Report[]
+  learnings         Learning[]
+  guidelines        Guideline[]
+  chatSessions      ChatSession[]
+  chatMessages      ChatMessage[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Connector {
+  id              String          @id @default(cuid())
+  workspaceId     String
+  type            ConnectorType
+  status          ConnectorStatus @default(ACTIVE)
+  displayName     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  lastSyncedAt    DateTime?
+  sourceMetadata  Json?
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accounts        ConnectorAccount[]
+
+  @@unique([workspaceId, type, displayName])
+  @@index([workspaceId, type])
+}
+
+model ConnectorAccount {
+  id                String       @id @default(cuid())
+  workspaceId       String
+  connectorId       String
+  externalAccountId String
+  accountName       String
+  channel           Channel      @default(OTHER)
+  currency          String?
+  isPrimary         Boolean      @default(false)
+  sourceSystem      ConnectorType
+  sourceMetadata    Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  workspace         Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connector         Connector    @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  oauthTokens       OAuthToken[]
+  syncRuns          SyncRun[]
+  campaigns         Campaign[]
+  adGroupsOrAdSets  AdGroupOrAdSet[]
+  ads               Ad[]
+  creatives         Creative[]
+
+  @@unique([workspaceId, externalAccountId, sourceSystem])
+  @@index([workspaceId, connectorId])
+}
+
+model OAuthToken {
+  id                    String           @id @default(cuid())
+  workspaceId           String
+  connectorAccountId    String
+  provider              ConnectorType
+  accessTokenEncrypted  String
+  refreshTokenEncrypted String?
+  scope                 String?
+  expiresAt             DateTime?
+  tokenType             String?
+  sourceMetadata        Json?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount      ConnectorAccount @relation(fields: [connectorAccountId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, provider])
+  @@index([connectorAccountId])
+}
+
+model SyncRun {
+  id                String           @id @default(cuid())
+  workspaceId       String
+  connectorAccountId String
+  status            SyncStatus       @default(QUEUED)
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  recordsRead       Int              @default(0)
+  recordsWritten    Int              @default(0)
+  errorMessage      String?
+  sourceMetadata    Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount @relation(fields: [connectorAccountId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status, createdAt])
+  @@index([connectorAccountId, createdAt])
+}
+
+model DailyMetricFact {
+  id                 String          @id @default(cuid())
+  workspaceId        String
+  date               DateTime
+  grain              Grain           @default(DAILY)
+  sourceSystem       ConnectorType
+  sourceEntityId     String?
+  sourceUpdatedAt    DateTime?
+  sourceMetadata     Json?
+  impressions        Int             @default(0)
+  clicks             Int             @default(0)
+  spend              Decimal         @default(0) @db.Decimal(14, 2)
+  revenue            Decimal         @default(0) @db.Decimal(14, 2)
+  conversions        Decimal         @default(0) @db.Decimal(14, 2)
+  sessions           Int             @default(0)
+  users              Int             @default(0)
+  orders             Int             @default(0)
+  productId          String?
+  landingPageId      String?
+  campaignId         String?
+  adGroupOrAdSetId   String?
+  adId               String?
+  creativeId         String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  workspace          Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product            Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  landingPage        LandingPage?    @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+  campaign           Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  adGroupOrAdSet     AdGroupOrAdSet? @relation(fields: [adGroupOrAdSetId], references: [id], onDelete: SetNull)
+  ad                 Ad?             @relation(fields: [adId], references: [id], onDelete: SetNull)
+  creative           Creative?       @relation(fields: [creativeId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, date, grain])
+  @@index([workspaceId, sourceSystem, date])
+}
+
+model Product {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  sku               String?
+  name              String
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, sourceSystem, sourceEntityId])
+  @@index([workspaceId, sku])
+}
+
+model LandingPage {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  url               String
+  normalizedPath    String
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, normalizedPath, sourceSystem])
+}
+
+model Campaign {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  connectorAccountId String?
+  name              String
+  status            String?
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount? @relation(fields: [connectorAccountId], references: [id], onDelete: SetNull)
+  adGroupsOrAdSets  AdGroupOrAdSet[]
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, sourceSystem, sourceEntityId])
+  @@index([workspaceId, connectorAccountId])
+}
+
+model AdGroupOrAdSet {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  connectorAccountId String?
+  campaignId        String?
+  name              String
+  status            String?
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount? @relation(fields: [connectorAccountId], references: [id], onDelete: SetNull)
+  campaign          Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  ads               Ad[]
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, sourceSystem, sourceEntityId])
+  @@index([workspaceId, campaignId])
+}
+
+model Ad {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  connectorAccountId String?
+  adGroupOrAdSetId  String?
+  name              String
+  status            String?
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount? @relation(fields: [connectorAccountId], references: [id], onDelete: SetNull)
+  adGroupOrAdSet    AdGroupOrAdSet?   @relation(fields: [adGroupOrAdSetId], references: [id], onDelete: SetNull)
+  creatives         Creative[]
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, sourceSystem, sourceEntityId])
+  @@index([workspaceId, adGroupOrAdSetId])
+}
+
+model Creative {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  connectorAccountId String?
+  adId              String?
+  title             String?
+  body              String?
+  destinationUrl    String?
+  sourceSystem      ConnectorType
+  sourceEntityId    String
+  sourceMetadata    Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectorAccount  ConnectorAccount? @relation(fields: [connectorAccountId], references: [id], onDelete: SetNull)
+  ad                Ad?               @relation(fields: [adId], references: [id], onDelete: SetNull)
+  dailyMetricFacts  DailyMetricFact[]
+
+  @@unique([workspaceId, sourceSystem, sourceEntityId])
+  @@index([workspaceId, adId])
+}
+
+model Insight {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  title              String
+  summary            String
+  confidenceScore    Decimal       @db.Decimal(4, 3)
+  status             InsightStatus @default(OPEN)
+  occurredOn         DateTime
+  sourceSystem       ConnectorType
+  sourceEntityId     String?
+  sourceMetadata     Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recommendations    Recommendation[]
+
+  @@index([workspaceId, status, occurredOn])
+}
+
+model Recommendation {
+  id                 String               @id @default(cuid())
+  workspaceId        String
+  insightId          String?
+  title              String
+  action             String
+  rationale          String?
+  confidenceScore    Decimal              @db.Decimal(4, 3)
+  status             RecommendationStatus @default(DRAFT)
+  sourceSystem       ConnectorType
+  sourceEntityId     String?
+  sourceMetadata     Json?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  workspace          Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  insight            Insight?             @relation(fields: [insightId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, createdAt])
+}
+
+model Report {
+  id                 String      @id @default(cuid())
+  workspaceId        String
+  createdById        String?
+  type               ReportType
+  period             Grain
+  periodStart        DateTime
+  periodEnd          DateTime
+  title              String
+  summary            String?
+  sourceMetadata     Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  workspace          Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy          User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, period, periodStart])
+}
+
+model Learning {
+  id                 String      @id @default(cuid())
+  workspaceId        String
+  key                String
+  title              String
+  content            String
+  tags               String[]
+  confidenceScore    Decimal?    @db.Decimal(4, 3)
+  sourceSystem       ConnectorType?
+  sourceEntityId     String?
+  sourceMetadata     Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  workspace          Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, key])
+  @@index([workspaceId, updatedAt])
+}
+
+model Guideline {
+  id                 String      @id @default(cuid())
+  workspaceId        String
+  title              String
+  content            String
+  isActive           Boolean     @default(true)
+  sourceSystem       ConnectorType?
+  sourceEntityId     String?
+  sourceMetadata     Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  workspace          Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, isActive])
+}
+
+model ChatSession {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  userId             String?
+  title              String?
+  sourceMetadata     Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages           ChatMessage[]
+
+  @@index([workspaceId, createdAt])
+}
+
+model ChatMessage {
+  id                 String      @id @default(cuid())
+  workspaceId        String
+  chatSessionId      String
+  userId             String?
+  role               MessageRole
+  content            String
+  sourceMetadata     Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  workspace          Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chatSession        ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  user               User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, chatSessionId, createdAt])
 }

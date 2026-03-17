@@ -33,3 +33,11 @@ npm test
 - Add event-level lineage metadata for observability and support debugging
 - Add queue-oriented sync lifecycle contract (`queued`, `running`, `retrying`, `failed`, `succeeded`)
 - Add persisted memory contract for recommendations and user feedback loops
+
+## Database schema rationale (Prisma + PostgreSQL)
+- The schema is **workspace-scoped first** so every major model carries `workspaceId` and indexed access paths for multi-tenant isolation in beta.
+- Integrations are split into `Connector` (provider connection), `ConnectorAccount` (ad/store/account scope), `OAuthToken` (credential lifecycle), and `SyncRun` (sync observability).
+- Normalized marketing/ecommerce entities (`Campaign`, `AdGroupOrAdSet`, `Ad`, `Creative`, `Product`, `LandingPage`) use `sourceSystem + sourceEntityId + sourceMetadata` to preserve lineage and resolve source-truth conflicts.
+- `DailyMetricFact` stores denormalized daily/weekly/monthly grain metrics and optional dimension references so reports can aggregate across channels without coupling to raw provider schemas.
+- Decision-support objects (`Insight`, `Recommendation`, `Learning`) include confidence scoring and source attribution metadata for explainable AI outputs and retrieval of prior learnings.
+- `Report` supports `DAILY`, `WEEKLY`, and `MONTHLY` periods; `ChatSession` and `ChatMessage` persist analyst/assistant context linked to workspace history.
