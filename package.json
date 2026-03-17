@@ -1,0 +1,13 @@
+{
+  "name": "growth-signal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node --test packages/domain/src/signal-engine.test.js"
+  }
+}
