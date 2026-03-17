@@ -1,0 +1,14 @@
+{
+  "name": "@growth-signal/memory",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "test": "node -e \"console.log('memory tests placeholder')\"",
+    "typecheck": "tsc --noEmit"
+  }
+}
